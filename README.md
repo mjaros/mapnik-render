@@ -11,7 +11,3 @@ Render a single tile:
 Batch render a bunch of tiles given a maximum zoom level:
 
     ./mapnik-render.js --output /path/to/output/directory --xml /path/to/mapnik.xml --batchrender --maxzoom 8
-
-## Known issues
-
-When batch rendering after finishing it takes some additional time until the program exists because the map pool is still open.
