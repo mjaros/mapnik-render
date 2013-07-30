@@ -99,13 +99,27 @@ function preRenderTiles(maxZoom, outputdir) {
   }
 }
 
+function showStats(start, end) {
+  var total = (end - start) / 1000;
+  console.log('Done! Rendering took ' + total + ' seconds.');
+}
+
 if (argv.batchrender) {
+  var start = new Date();
   preRenderTiles(argv.maxzoom, argv.output);
+  queue.on('finish', function() {
+    var end = new Date();
+    showStats(start, end);
+    shutdown();
+  });
 }
 else {
+  var start = new Date();
   renderTile(argv.z, argv.x, argv.y, argv.output, function(err) {
     if (err) console.error(err);
     else {
+      var end = new Date();
+      showStats(start, end);
       shutdown();
     }
   });
