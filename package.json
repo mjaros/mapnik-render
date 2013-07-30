@@ -1,0 +1,23 @@
+{
+  "name": "mapnik-render",
+  "description": "Simple command line renderer for mapnik",
+  "version": "0.0.0",
+  "author": {
+    "name": "Matthias Jaros",
+    "url": "http://mjaros.com/",
+    "email": "mjaros@mjaros.com"
+  },
+  "engines": {
+    "node": "0.10.x"
+  },
+  "dependencies": {
+    "mapnik": "1.1.x",
+    "sphericalmercator": "1.0.x",
+    "optimist": "0.6.x",
+    "generic-pool": "2.0.x",
+    "mkdirp": "0.3.x"
+  },
+  "devDependencies": {
+
+  }
+}
