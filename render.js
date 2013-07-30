@@ -16,16 +16,6 @@ var argv = require('optimist')
   .default({xml: 'test/fixtures/sample.xml', batchrender: false, maxzoom: 0, z: 0, x: 0, y: 0})
   .argv;
 
-// Signal handling
-process.on('SIGINT', function() {
-  console.log('Received SIGINT. Shutting down ...');
-  shutdown();
-});
-process.on('SIGTERM', function() {
-  console.log('Received SIGTERM. Shutting down ...');
-  shutdown();
-});
-
 var mercator = new SphericalMercator({size: 256});
 
 // Load default system fonts
