@@ -17,7 +17,10 @@ RenderQueue.prototype.add = function(key) {
 
 RenderQueue.prototype.next = function() {
   if (this.queue.length) this.invoke();
-  else this.emit('drain');
+  else {
+    this.emit('drain');
+    if (this.running === 0) this.emit('finish');
+  }
 }
 
 RenderQueue.prototype.invoke = function() {
