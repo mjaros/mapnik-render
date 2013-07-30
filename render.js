@@ -3,6 +3,7 @@
 var mapnik = require('mapnik');
 var fs = require('fs');
 var os = require('os');
+var path = require('path');
 var SphericalMercator = require('sphericalmercator');
 var pool = require('generic-pool');
 var mkdirp = require('mkdirp');
@@ -15,29 +16,6 @@ var argv = require('optimist')
   .default({xml: 'test/fixtures/sample.xml', batchrender: false, maxzoom: 0, z: 0, x: 0, y: 0})
   .argv;
 
-var mercator = new SphericalMercator({size: 256});
-
-// Load default system fonts
-mapnik.register_default_fonts();
-
-// Load map pool
-var mapPool = pool.Pool({
-  create: function(callback) {
-    var map = new mapnik.Map(256, 256);
-    map.load(argv.xml, function(err, map) {
-      if (err) return callback(err, null);
-      else callback(null, map);
-    });
-  },
-  destroy: function(map) {
-    delete map;
-  },
-  max: os.cpus().length,
-});
-
-// Create render queue
-var queue = new RenderQueue(renderTile, os.cpus().length);
-
 // Signal handling
 process.on('SIGINT', function() {
   console.log('Received SIGINT. Shutting down ...');
@@ -48,9 +26,70 @@ process.on('SIGTERM', function() {
   shutdown();
 });
 
+var mercator = new SphericalMercator({size: 256});
+
+// Load default system fonts
+mapnik.register_default_fonts();
+
+// Create render queue
+var queue = new RenderQueue(renderTile, os.cpus().length);
+
+// Stores XML directory path
+var xmlDir = '';
+
+// Caches XML string
+var xmlString = '';
+
+// Stores map pool
+var mapPool = null;
+
+// Boot up
+_loadXml(argv.xml, function(err, xml) {
+  if (err) {
+    return console.error(err);
+    process.exit(1);
+  }
+  xmlDir = path.resolve(path.dirname(argv.xml));
+  xmlString = xml;
+  _createMapPool(xmlString, function(err, pool) {
+    mapPool = pool;
+    init();
+  });
+});
+
+function _loadXml(xml, callback) {
+  fs.readFile(xml, 'utf8', function(err, xml) {
+    if (err) return callback(err);
+    callback(null, xml);
+  });
+}
+
+function _createMapPool(xmlString, callback) {
+  var mapPool = pool.Pool({
+    create: function(callback) {
+      var map = new mapnik.Map(256, 256);
+      var opts = {strict: false, base: xmlDir + '/'};
+      try {
+        map.fromStringSync(xmlString, opts);
+        callback(null, map);
+      }
+      catch (err) {
+        return callback(err, null);
+      }
+    },
+    destroy: function(map) {
+      delete map;
+    },
+    max: os.cpus().length
+  });
+  callback(null, mapPool);
+}
+
 function shutdown() {
   mapPool.drain(function() {
-    mapPool.destroyAllNow();
+    mapPool.destroyAllNow(function() {
+      process.exit();
+    });
   });
 }
 
@@ -104,23 +143,28 @@ function showStats(start, end) {
   console.log('Done! Rendering took ' + total + ' seconds.');
 }
 
-if (argv.batchrender) {
-  var start = new Date();
-  preRenderTiles(argv.maxzoom, argv.output);
-  queue.on('finish', function() {
-    var end = new Date();
-    showStats(start, end);
-    shutdown();
-  });
-}
-else {
-  var start = new Date();
-  renderTile(argv.z, argv.x, argv.y, argv.output, function(err) {
-    if (err) console.error(err);
-    else {
+function init() {
+  if (argv.batchrender) {
+    var start = new Date();
+    preRenderTiles(argv.maxzoom, argv.output);
+    queue.on('finish', function() {
       var end = new Date();
       showStats(start, end);
       shutdown();
-    }
-  });
+    });
+  }
+  else {
+    var start = new Date();
+    renderTile(argv.z, argv.x, argv.y, argv.output, function(err) {
+      if (err) {
+        console.error(err);
+        shutdown();
+      }
+      else {
+        var end = new Date();
+        showStats(start, end);
+        shutdown();
+      }
+    });
+  }
 }
